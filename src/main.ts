@@ -1910,10 +1910,16 @@ class TestDataGenerator {
 		if (await this.app.vault.adapter.exists(path)) {
 			const listing = await this.app.vault.adapter.list(path);
 			for (const file of listing.files) {
-				const f = this.app.vault.getAbstractFileByPath(file);
-				if (f) {
-					await this.app.vault.delete(f);
+				try {
+					const f = this.app.vault.getAbstractFileByPath(file);
+					if (f) {
+						await this.app.vault.delete(f);
+					} else {
+						await this.app.vault.adapter.remove(file);
+					}
 					count++;
+				} catch {
+					// File already deleted or inaccessible -- skip
 				}
 			}
 		}
