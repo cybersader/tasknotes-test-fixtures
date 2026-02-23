@@ -658,22 +658,7 @@ views:
     sort:
       - property: file.ctime
         direction: DESC
-    enableSearch: true
-    sort:
-      - property: formula.daysUntilReview
-        direction: ASC
-  - type: table
-    name: By Department
-    order:
-      - file.name
-      - formula.ownerName
-      - formula.reviewStatus
-      - review_date
-    sort:
-      - property: file.name
-        direction: ASC
-    group:
-      - column: file.folder`,
+    enableSearch: true`,
 
 	"Notification Demo": `filters:
   and:
