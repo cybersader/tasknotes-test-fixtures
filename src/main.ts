@@ -1896,13 +1896,17 @@ class TestDataGenerator {
 		}
 	}
 
-	private async createOrOverwrite(path: string, content: string): Promise<void> {
+	/** Returns true if the file was written, false if skipped (unchanged). */
+	private async createOrOverwrite(path: string, content: string): Promise<boolean> {
 		const existing = this.app.vault.getAbstractFileByPath(path);
 		if (existing) {
+			const current = await this.app.vault.read(existing as any);
+			if (current === content) return false;
 			await this.app.vault.modify(existing as any, content);
 		} else {
 			await this.app.vault.create(path, content);
 		}
+		return true;
 	}
 
 	private async cleanFolder(path: string): Promise<number> {
@@ -1971,10 +1975,11 @@ class TestDataGenerator {
 
 	async generateAll(): Promise<string> {
 		const s = this.settings;
-		const msgs: string[] = [];
 		const demoEntries = Object.entries(DEMO_BASES);
 		const totalItems = PERSONS.length + GROUPS.length + DOCUMENTS.length + TASKS.length + demoEntries.length;
 		let completed = 0;
+		let written = 0;
+		let skipped = 0;
 
 		// Ensure directories
 		this.modal?.setStep("Creating folders...");
@@ -1991,64 +1996,59 @@ class TestDataGenerator {
 			await this.ensureFolder(`${s.documentsFolder}/${sub}`);
 		}
 
+		const track = (changed: boolean) => {
+			completed++;
+			if (changed) written++; else skipped++;
+		};
+
 		// People
 		this.modal?.setStep(`People (0/${PERSONS.length})`);
 		this.modal?.addLog(`Generating ${PERSONS.length} people...`);
 		for (let i = 0; i < PERSONS.length; i++) {
-			await this.createOrOverwrite(`${s.peopleFolder}/${PERSONS[i].name}.md`, generatePersonContent(PERSONS[i], this.ctx));
-			completed++;
+			track(await this.createOrOverwrite(`${s.peopleFolder}/${PERSONS[i].name}.md`, generatePersonContent(PERSONS[i], this.ctx)));
 			this.modal?.setStep(`People (${i + 1}/${PERSONS.length})`);
 			this.modal?.setProgress(completed, totalItems);
 		}
-		msgs.push(`${PERSONS.length} people`);
 
 		// Groups
 		this.modal?.setStep(`Groups (0/${GROUPS.length})`);
 		this.modal?.addLog(`Generating ${GROUPS.length} groups...`);
 		for (let i = 0; i < GROUPS.length; i++) {
-			await this.createOrOverwrite(`${s.groupsFolder}/${GROUPS[i].name}.md`, generateGroupContent(GROUPS[i], this.ctx));
-			completed++;
+			track(await this.createOrOverwrite(`${s.groupsFolder}/${GROUPS[i].name}.md`, generateGroupContent(GROUPS[i], this.ctx)));
 			this.modal?.setStep(`Groups (${i + 1}/${GROUPS.length})`);
 			this.modal?.setProgress(completed, totalItems);
 		}
-		msgs.push(`${GROUPS.length} groups`);
 
 		// Documents
 		this.modal?.setStep(`Documents (0/${DOCUMENTS.length})`);
 		this.modal?.addLog(`Generating ${DOCUMENTS.length} documents...`);
 		for (let i = 0; i < DOCUMENTS.length; i++) {
 			const doc = DOCUMENTS[i];
-			await this.createOrOverwrite(`${s.documentsFolder}/${doc.subfolder}/${doc.name}.md`, generateDocumentContent(doc));
-			completed++;
+			track(await this.createOrOverwrite(`${s.documentsFolder}/${doc.subfolder}/${doc.name}.md`, generateDocumentContent(doc)));
 			this.modal?.setStep(`Documents (${i + 1}/${DOCUMENTS.length})`);
 			this.modal?.setProgress(completed, totalItems);
 		}
-		msgs.push(`${DOCUMENTS.length} documents`);
 
 		// Tasks
 		this.modal?.setStep(`Tasks (0/${TASKS.length})`);
 		this.modal?.addLog(`Generating ${TASKS.length} tasks...`);
 		for (let i = 0; i < TASKS.length; i++) {
-			await this.createOrOverwrite(`${s.tasksFolder}/${TASKS[i].name}.md`, generateTaskContent(TASKS[i], this.ctx));
-			completed++;
+			track(await this.createOrOverwrite(`${s.tasksFolder}/${TASKS[i].name}.md`, generateTaskContent(TASKS[i], this.ctx)));
 			this.modal?.setStep(`Tasks (${i + 1}/${TASKS.length})`);
 			this.modal?.setProgress(completed, totalItems);
 		}
-		msgs.push(`${TASKS.length} tasks`);
 
 		// Demo .base files
 		this.modal?.setStep(`Demos (0/${demoEntries.length})`);
 		this.modal?.addLog(`Generating ${demoEntries.length} demo views...`);
 		for (let i = 0; i < demoEntries.length; i++) {
 			const [name, content] = demoEntries[i];
-			await this.createOrOverwrite(`${s.demosFolder}/${name}.base`, content);
-			completed++;
+			track(await this.createOrOverwrite(`${s.demosFolder}/${name}.base`, content));
 			this.modal?.setStep(`Demos (${i + 1}/${demoEntries.length})`);
 			this.modal?.setProgress(completed, totalItems);
 		}
-		msgs.push(`${demoEntries.length} demos`);
 
-		return msgs.join(", ");
+		return `${written} written, ${skipped} unchanged`;
 	}
 }
 
