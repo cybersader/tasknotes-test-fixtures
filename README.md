@@ -1,14 +1,15 @@
 # TaskNotes Test Fixtures
 
-An Obsidian plugin that generates test data for [TaskNotes](https://github.com/callumalpass/tasknotes) development and testing. Install it alongside TaskNotes in your dev vault to quickly populate realistic test content.
+A testing harness plugin for [TaskNotes](https://github.com/callumalpass/tasknotes) development. Generates realistic test data, configures TaskNotes settings, and provides one-button environment setup. The fixture data evolves with TaskNotes -- modify `src/main.ts` to add new data shapes, test scenarios, or custom commands for whatever you're testing.
 
-## What it generates
+## Current fixtures
 
-- **7 person notes** (User-DB/People/) -- developers, analysts, managers with roles, departments, and contact info
-- **5 group notes** (User-DB/Groups/) -- teams with nested membership (Engineering, Security, Product, All Staff, Core Reviewers)
-- **45 document notes** (Document Library, Knowledge/) -- across 10 subdirectories (Projects, Compliance, Technical, HR, Meeting Notes, Research, Templates, Design, Operations, Security) with review dates, owners, and version tracking
-- **50 task notes** (TaskNotes/Tasks/) -- with varied states: overdue, due today, due this week, recurring, completed, backlog, parent/subtask hierarchies, dependencies, reminders, time tracking
-- **18 demo .base views** (TaskNotes/Demos/) -- showcasing every TaskNotes view type: task lists, kanban boards, calendars, notifications, bulk operations, statistics, time tracking, shared vault workflows
+The default data set covers the major TaskNotes features. These are starting points -- fork and customize for your testing needs:
+
+- **People and groups** -- person notes with roles/departments, group notes with nested membership
+- **Documents** -- across 10 subdirectories with review dates, owners, and version tracking
+- **Tasks** -- overdue, due today, recurring, completed, backlog, parent/subtask hierarchies, dependencies, reminders, time tracking
+- **Demo .base views** -- every TaskNotes view type: task lists, kanban, calendars, notifications, bulk operations, statistics, shared vault workflows
 
 ## Installation
 
@@ -59,9 +60,9 @@ Customize output folder paths in Settings > TaskNotes Test Fixtures:
 ## Development
 
 ```bash
-npm install
-npm run dev    # Watch mode
-npm run build  # Production build
+bun install        # or: npm install
+bun run dev        # Watch mode
+bun run build      # Production build
 ```
 
 ## License

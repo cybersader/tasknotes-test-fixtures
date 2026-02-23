@@ -1,4 +1,86 @@
-import { App, Notice, Plugin, PluginSettingTab, Setting } from "obsidian";
+import { App, Modal, Notice, Plugin, PluginSettingTab, Setting } from "obsidian";
+
+// ============================================================
+// PROGRESS MODAL
+// ============================================================
+
+class ProgressModal extends Modal {
+	private stepLabel: HTMLElement;
+	private barFill: HTMLElement;
+	private countLabel: HTMLElement;
+	private logContainer: HTMLElement;
+
+	constructor(app: App) {
+		super(app);
+	}
+
+	onOpen() {
+		const { contentEl } = this;
+		contentEl.empty();
+		contentEl.addClass("tn-fixtures-progress");
+
+		contentEl.createEl("h3", { text: "Test Fixtures" });
+
+		this.stepLabel = contentEl.createEl("div", {
+			text: "Starting...",
+			cls: "tn-fixtures-step",
+		});
+
+		const barOuter = contentEl.createEl("div", { cls: "tn-fixtures-bar-outer" });
+		this.barFill = barOuter.createEl("div", { cls: "tn-fixtures-bar-fill" });
+
+		this.countLabel = contentEl.createEl("div", {
+			text: "",
+			cls: "tn-fixtures-count",
+		});
+
+		this.logContainer = contentEl.createEl("div", { cls: "tn-fixtures-log" });
+
+		// Inline styles (no external CSS needed)
+		contentEl.style.cssText = "padding: 20px; min-width: 400px;";
+		(contentEl.querySelector("h3") as HTMLElement).style.cssText = "margin: 0 0 16px 0;";
+		this.stepLabel.style.cssText = "font-weight: 600; margin-bottom: 8px; font-size: 14px;";
+		barOuter.style.cssText = "width: 100%; height: 8px; background: var(--background-modifier-border); border-radius: 4px; overflow: hidden; margin-bottom: 6px;";
+		this.barFill.style.cssText = "height: 100%; width: 0%; background: var(--interactive-accent); border-radius: 4px; transition: width 0.15s ease;";
+		this.countLabel.style.cssText = "font-size: 12px; color: var(--text-muted); margin-bottom: 12px;";
+		this.logContainer.style.cssText = "font-size: 11px; color: var(--text-muted); max-height: 120px; overflow-y: auto; font-family: var(--font-monospace);";
+	}
+
+	setStep(label: string) {
+		this.stepLabel.textContent = label;
+	}
+
+	setProgress(current: number, total: number) {
+		const pct = total > 0 ? Math.round((current / total) * 100) : 0;
+		this.barFill.style.width = `${pct}%`;
+		this.countLabel.textContent = `${current} / ${total} (${pct}%)`;
+	}
+
+	addLog(msg: string) {
+		const line = this.logContainer.createEl("div", { text: msg });
+		line.style.cssText = "padding: 1px 0;";
+		this.logContainer.scrollTop = this.logContainer.scrollHeight;
+	}
+
+	setDone(summary: string) {
+		this.stepLabel.textContent = "Complete!";
+		this.stepLabel.style.color = "var(--text-success)";
+		this.barFill.style.width = "100%";
+		this.countLabel.textContent = summary;
+		// Auto-close after 3 seconds
+		setTimeout(() => this.close(), 3000);
+	}
+
+	setError(msg: string) {
+		this.stepLabel.textContent = "Error";
+		this.stepLabel.style.color = "var(--text-error)";
+		this.countLabel.textContent = msg;
+	}
+
+	onClose() {
+		this.contentEl.empty();
+	}
+}
 
 // ============================================================
 // SETTINGS
@@ -1799,11 +1881,13 @@ class TestDataGenerator {
 	private app: App;
 	private settings: TestFixturesSettings;
 	private ctx: GenerationContext;
+	private modal: ProgressModal | null;
 
-	constructor(app: App, settings: TestFixturesSettings, ctx: GenerationContext) {
+	constructor(app: App, settings: TestFixturesSettings, ctx: GenerationContext, modal?: ProgressModal) {
 		this.app = app;
 		this.settings = settings;
 		this.ctx = ctx;
+		this.modal = modal || null;
 	}
 
 	private async ensureFolder(path: string): Promise<void> {
@@ -1839,30 +1923,56 @@ class TestDataGenerator {
 	async cleanAll(): Promise<string> {
 		const msgs: string[] = [];
 		const s = this.settings;
+		let totalDeleted = 0;
 
-		let deleted = await this.cleanFolder(s.peopleFolder);
-		msgs.push(`People: ${deleted} files removed`);
-
-		deleted = await this.cleanFolder(s.groupsFolder);
-		msgs.push(`Groups: ${deleted} files removed`);
-
-		deleted = await this.cleanFolder(s.tasksFolder);
-		msgs.push(`Tasks: ${deleted} files removed`);
-
+		const categories = [
+			{ label: "people", folder: s.peopleFolder },
+			{ label: "groups", folder: s.groupsFolder },
+			{ label: "tasks", folder: s.tasksFolder },
+		];
 		const docSubdirs = ["Projects", "Compliance", "Technical", "HR", "Meeting Notes", "Research", "Templates", "Design", "Operations", "Security"];
-		for (const sub of docSubdirs) {
-			deleted = await this.cleanFolder(`${s.documentsFolder}/${sub}`);
-			if (deleted > 0) msgs.push(`Documents/${sub}: ${deleted} files removed`);
+		const totalCategories = categories.length + docSubdirs.length;
+		let catIndex = 0;
+
+		for (const cat of categories) {
+			this.modal?.setStep(`Cleaning ${cat.label}...`);
+			this.modal?.setProgress(catIndex, totalCategories);
+			const deleted = await this.cleanFolder(cat.folder);
+			totalDeleted += deleted;
+			if (deleted > 0) {
+				msgs.push(`${cat.label}: ${deleted} removed`);
+				this.modal?.addLog(`${cat.label}: ${deleted} files`);
+			}
+			catIndex++;
 		}
 
+		for (const sub of docSubdirs) {
+			this.modal?.setStep(`Cleaning docs/${sub}...`);
+			this.modal?.setProgress(catIndex, totalCategories);
+			const deleted = await this.cleanFolder(`${s.documentsFolder}/${sub}`);
+			totalDeleted += deleted;
+			if (deleted > 0) {
+				msgs.push(`docs/${sub}: ${deleted} removed`);
+				this.modal?.addLog(`docs/${sub}: ${deleted} files`);
+			}
+			catIndex++;
+		}
+
+		this.modal?.setProgress(totalCategories, totalCategories);
+		this.modal?.addLog(`Total cleaned: ${totalDeleted} files`);
 		return msgs.join("\n");
 	}
 
 	async generateAll(): Promise<string> {
 		const s = this.settings;
 		const msgs: string[] = [];
+		const demoEntries = Object.entries(DEMO_BASES);
+		const totalItems = PERSONS.length + GROUPS.length + DOCUMENTS.length + TASKS.length + demoEntries.length;
+		let completed = 0;
 
 		// Ensure directories
+		this.modal?.setStep("Creating folders...");
+		this.modal?.setProgress(0, totalItems);
 		await this.ensureFolder(s.peopleFolder);
 		await this.ensureFolder(s.groupsFolder);
 		await this.ensureFolder(s.tasksFolder);
@@ -1876,36 +1986,61 @@ class TestDataGenerator {
 		}
 
 		// People
-		for (const person of PERSONS) {
-			await this.createOrOverwrite(`${s.peopleFolder}/${person.name}.md`, generatePersonContent(person, this.ctx));
+		this.modal?.setStep(`People (0/${PERSONS.length})`);
+		this.modal?.addLog(`Generating ${PERSONS.length} people...`);
+		for (let i = 0; i < PERSONS.length; i++) {
+			await this.createOrOverwrite(`${s.peopleFolder}/${PERSONS[i].name}.md`, generatePersonContent(PERSONS[i], this.ctx));
+			completed++;
+			this.modal?.setStep(`People (${i + 1}/${PERSONS.length})`);
+			this.modal?.setProgress(completed, totalItems);
 		}
-		msgs.push(`${PERSONS.length} person notes`);
+		msgs.push(`${PERSONS.length} people`);
 
 		// Groups
-		for (const group of GROUPS) {
-			await this.createOrOverwrite(`${s.groupsFolder}/${group.name}.md`, generateGroupContent(group, this.ctx));
+		this.modal?.setStep(`Groups (0/${GROUPS.length})`);
+		this.modal?.addLog(`Generating ${GROUPS.length} groups...`);
+		for (let i = 0; i < GROUPS.length; i++) {
+			await this.createOrOverwrite(`${s.groupsFolder}/${GROUPS[i].name}.md`, generateGroupContent(GROUPS[i], this.ctx));
+			completed++;
+			this.modal?.setStep(`Groups (${i + 1}/${GROUPS.length})`);
+			this.modal?.setProgress(completed, totalItems);
 		}
-		msgs.push(`${GROUPS.length} group notes`);
+		msgs.push(`${GROUPS.length} groups`);
 
 		// Documents
-		for (const doc of DOCUMENTS) {
+		this.modal?.setStep(`Documents (0/${DOCUMENTS.length})`);
+		this.modal?.addLog(`Generating ${DOCUMENTS.length} documents...`);
+		for (let i = 0; i < DOCUMENTS.length; i++) {
+			const doc = DOCUMENTS[i];
 			await this.createOrOverwrite(`${s.documentsFolder}/${doc.subfolder}/${doc.name}.md`, generateDocumentContent(doc));
+			completed++;
+			this.modal?.setStep(`Documents (${i + 1}/${DOCUMENTS.length})`);
+			this.modal?.setProgress(completed, totalItems);
 		}
-		msgs.push(`${DOCUMENTS.length} document notes`);
+		msgs.push(`${DOCUMENTS.length} documents`);
 
 		// Tasks
-		for (const task of TASKS) {
-			await this.createOrOverwrite(`${s.tasksFolder}/${task.name}.md`, generateTaskContent(task, this.ctx));
+		this.modal?.setStep(`Tasks (0/${TASKS.length})`);
+		this.modal?.addLog(`Generating ${TASKS.length} tasks...`);
+		for (let i = 0; i < TASKS.length; i++) {
+			await this.createOrOverwrite(`${s.tasksFolder}/${TASKS[i].name}.md`, generateTaskContent(TASKS[i], this.ctx));
+			completed++;
+			this.modal?.setStep(`Tasks (${i + 1}/${TASKS.length})`);
+			this.modal?.setProgress(completed, totalItems);
 		}
-		msgs.push(`${TASKS.length} task notes`);
+		msgs.push(`${TASKS.length} tasks`);
 
 		// Demo .base files
-		let demoCount = 0;
-		for (const [name, content] of Object.entries(DEMO_BASES)) {
+		this.modal?.setStep(`Demos (0/${demoEntries.length})`);
+		this.modal?.addLog(`Generating ${demoEntries.length} demo views...`);
+		for (let i = 0; i < demoEntries.length; i++) {
+			const [name, content] = demoEntries[i];
 			await this.createOrOverwrite(`${s.demosFolder}/${name}.base`, content);
-			demoCount++;
+			completed++;
+			this.modal?.setStep(`Demos (${i + 1}/${demoEntries.length})`);
+			this.modal?.setProgress(completed, totalItems);
 		}
-		msgs.push(`${demoCount} demo .base views`);
+		msgs.push(`${demoEntries.length} demos`);
 
 		return msgs.join(", ");
 	}
@@ -1966,18 +2101,56 @@ export default class TestFixturesPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 
+		// Helper to apply test-friendly settings to TaskNotes
+		const applyTestSettings = (tn: any, folders: TestFixturesSettings) => {
+			const s = tn.settings;
+			s.taskIdentificationMethod = "property";
+			s.taskPropertyName = "isTask";
+			s.taskPropertyValue = "true";
+			s.taskTag = "task";
+			s.tasksFolder = folders.tasksFolder;
+			s.personNotesFolder = folders.peopleFolder;
+			s.groupNotesFolder = folders.groupsFolder;
+			s.personNotesTag = "person";
+			s.groupNotesTag = "group";
+			s.identityTypePropertyName = "type";
+			s.personTypeValue = "person";
+			s.groupTypeValue = "group";
+			s.autoSetCreator = true;
+			s.creatorFieldName = "creator";
+			s.assigneeFieldName = "assignee";
+			s.enableBases = true;
+			s.enableBulkActionsButton = true;
+			s.enableNotifications = true;
+			s.enableUniversalBasesButtons = true;
+			s.fieldMapping = {
+				title: "title", status: "status", priority: "priority",
+				due: "due", scheduled: "scheduled", contexts: "contexts",
+				projects: "projects", timeEstimate: "timeEstimate",
+				completedDate: "completedDate", dateCreated: "dateCreated",
+				dateModified: "dateModified", recurrence: "recurrence",
+				recurrenceAnchor: "recurrence_anchor", archiveTag: "archived",
+				timeEntries: "timeEntries", completeInstances: "complete_instances",
+				skippedInstances: "skipped_instances", blockedBy: "blockedBy",
+				pomodoros: "pomodoros", icsEventId: "icsEventId",
+				icsEventTag: "ics_event", googleCalendarEventId: "googleCalendarEventId",
+				reminders: "reminders",
+			};
+		};
+
 		this.addCommand({
 			id: "generate-all",
 			name: "Generate all test data",
 			callback: async () => {
+				const modal = new ProgressModal(this.app);
+				modal.open();
 				const ctx = buildContextFromTaskNotes(this.app);
-				const gen = new TestDataGenerator(this.app, this.settings, ctx);
-				new Notice("Generating test data...");
+				const gen = new TestDataGenerator(this.app, this.settings, ctx, modal);
 				try {
 					const result = await gen.generateAll();
-					new Notice(`Done! Generated: ${result}`);
+					modal.setDone(`Generated: ${result}`);
 				} catch (e) {
-					new Notice(`Error: ${e}`);
+					modal.setError(`${e}`);
 					console.error("Test fixtures generation error:", e);
 				}
 			},
@@ -1987,17 +2160,18 @@ export default class TestFixturesPlugin extends Plugin {
 			id: "clean-and-generate",
 			name: "Clean and regenerate all test data",
 			callback: async () => {
+				const modal = new ProgressModal(this.app);
+				modal.open();
 				const ctx = buildContextFromTaskNotes(this.app);
-				const gen = new TestDataGenerator(this.app, this.settings, ctx);
-				new Notice("Cleaning existing data...");
+				const gen = new TestDataGenerator(this.app, this.settings, ctx, modal);
 				try {
-					const cleanResult = await gen.cleanAll();
-					console.log("Clean result:", cleanResult);
-					new Notice("Regenerating...");
-					const genResult = await gen.generateAll();
-					new Notice(`Done! Generated: ${genResult}`);
+					modal.addLog("Phase 1: Cleaning...");
+					await gen.cleanAll();
+					modal.addLog("Phase 2: Generating...");
+					const result = await gen.generateAll();
+					modal.setDone(`Generated: ${result}`);
 				} catch (e) {
-					new Notice(`Error: ${e}`);
+					modal.setError(`${e}`);
 					console.error("Test fixtures error:", e);
 				}
 			},
@@ -2007,14 +2181,15 @@ export default class TestFixturesPlugin extends Plugin {
 			id: "clean-only",
 			name: "Remove all generated test data",
 			callback: async () => {
+				const modal = new ProgressModal(this.app);
+				modal.open();
 				const ctx = buildContextFromTaskNotes(this.app);
-				const gen = new TestDataGenerator(this.app, this.settings, ctx);
-				new Notice("Cleaning test data...");
+				const gen = new TestDataGenerator(this.app, this.settings, ctx, modal);
 				try {
-					const result = await gen.cleanAll();
-					new Notice(`Done!\n${result}`);
+					await gen.cleanAll();
+					modal.setDone("All test data removed");
 				} catch (e) {
-					new Notice(`Error: ${e}`);
+					modal.setError(`${e}`);
 					console.error("Test fixtures clean error:", e);
 				}
 			},
@@ -2029,49 +2204,12 @@ export default class TestFixturesPlugin extends Plugin {
 					new Notice("TaskNotes plugin is not installed or enabled");
 					return;
 				}
-				// Backup current settings
 				const backup = JSON.parse(JSON.stringify(tn.settings));
 				const data = await this.loadData() || {};
 				data.backupSettings = backup;
 				await this.saveData(data);
 
-				// Apply test-friendly settings
-				const s = tn.settings;
-				s.taskIdentificationMethod = "property";
-				s.taskPropertyName = "isTask";
-				s.taskPropertyValue = "true";
-				s.taskTag = "task";
-				s.tasksFolder = this.settings.tasksFolder;
-				s.personNotesFolder = this.settings.peopleFolder;
-				s.groupNotesFolder = this.settings.groupsFolder;
-				s.personNotesTag = "person";
-				s.groupNotesTag = "group";
-				s.identityTypePropertyName = "type";
-				s.personTypeValue = "person";
-				s.groupTypeValue = "group";
-				s.autoSetCreator = true;
-				s.creatorFieldName = "creator";
-				s.assigneeFieldName = "assignee";
-				s.enableBases = true;
-				s.enableBulkActionsButton = true;
-				s.enableNotifications = true;
-				s.enableUniversalBasesButtons = true;
-
-				// Reset field mapping to defaults
-				s.fieldMapping = {
-					title: "title", status: "status", priority: "priority",
-					due: "due", scheduled: "scheduled", contexts: "contexts",
-					projects: "projects", timeEstimate: "timeEstimate",
-					completedDate: "completedDate", dateCreated: "dateCreated",
-					dateModified: "dateModified", recurrence: "recurrence",
-					recurrenceAnchor: "recurrence_anchor", archiveTag: "archived",
-					timeEntries: "timeEntries", completeInstances: "complete_instances",
-					skippedInstances: "skipped_instances", blockedBy: "blockedBy",
-					pomodoros: "pomodoros", icsEventId: "icsEventId",
-					icsEventTag: "ics_event", googleCalendarEventId: "googleCalendarEventId",
-					reminders: "reminders",
-				};
-
+				applyTestSettings(tn, this.settings);
 				await tn.saveSettings();
 				new Notice("TaskNotes configured for testing. Previous settings backed up.");
 			},
@@ -2109,57 +2247,32 @@ export default class TestFixturesPlugin extends Plugin {
 					return;
 				}
 
+				const modal = new ProgressModal(this.app);
+				modal.open();
+
 				// Step 1: Configure TaskNotes
+				modal.setStep("Configuring TaskNotes...");
+				modal.addLog("Backing up current settings...");
 				const backup = JSON.parse(JSON.stringify(tn.settings));
 				const data = await this.loadData() || {};
 				data.backupSettings = backup;
 				await this.saveData(data);
 
-				const s = tn.settings;
-				s.taskIdentificationMethod = "property";
-				s.taskPropertyName = "isTask";
-				s.taskPropertyValue = "true";
-				s.taskTag = "task";
-				s.tasksFolder = this.settings.tasksFolder;
-				s.personNotesFolder = this.settings.peopleFolder;
-				s.groupNotesFolder = this.settings.groupsFolder;
-				s.personNotesTag = "person";
-				s.groupNotesTag = "group";
-				s.identityTypePropertyName = "type";
-				s.personTypeValue = "person";
-				s.groupTypeValue = "group";
-				s.autoSetCreator = true;
-				s.creatorFieldName = "creator";
-				s.assigneeFieldName = "assignee";
-				s.enableBases = true;
-				s.enableBulkActionsButton = true;
-				s.enableNotifications = true;
-				s.enableUniversalBasesButtons = true;
-				s.fieldMapping = {
-					title: "title", status: "status", priority: "priority",
-					due: "due", scheduled: "scheduled", contexts: "contexts",
-					projects: "projects", timeEstimate: "timeEstimate",
-					completedDate: "completedDate", dateCreated: "dateCreated",
-					dateModified: "dateModified", recurrence: "recurrence",
-					recurrenceAnchor: "recurrence_anchor", archiveTag: "archived",
-					timeEntries: "timeEntries", completeInstances: "complete_instances",
-					skippedInstances: "skipped_instances", blockedBy: "blockedBy",
-					pomodoros: "pomodoros", icsEventId: "icsEventId",
-					icsEventTag: "ics_event", googleCalendarEventId: "googleCalendarEventId",
-					reminders: "reminders",
-				};
+				applyTestSettings(tn, this.settings);
 				await tn.saveSettings();
+				modal.addLog("TaskNotes settings applied");
 
 				// Step 2: Clean and regenerate
 				const ctx = buildContextFromTaskNotes(this.app);
-				const gen = new TestDataGenerator(this.app, this.settings, ctx);
-				new Notice("Setting up test environment...");
+				const gen = new TestDataGenerator(this.app, this.settings, ctx, modal);
 				try {
+					modal.addLog("Phase 2: Cleaning...");
 					await gen.cleanAll();
+					modal.addLog("Phase 3: Generating...");
 					const result = await gen.generateAll();
-					new Notice(`Test environment ready!\nTaskNotes configured, ${result}`);
+					modal.setDone(`TaskNotes configured, ${result}`);
 				} catch (e) {
-					new Notice(`Error: ${e}`);
+					modal.setError(`${e}`);
 					console.error("Full test setup error:", e);
 				}
 			},
