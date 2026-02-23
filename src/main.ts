@@ -21,7 +21,7 @@ import { App, Modal, Notice, Plugin, PluginSettingTab, Setting } from "obsidian"
 //     ├── Operations/        3 docs
 //     └── Security/          3 docs
 //   TaskNotes/Tasks/         50 task notes (various statuses, dates, deps)
-//   TaskNotes/Demos/         18 demo .base views
+//   TaskNotes/Demos/         19 demo .base views
 //
 // All folder paths are configurable in plugin settings.
 //
@@ -491,6 +491,7 @@ views:
       - type
       - formula.ownerName
       - status
+      - isTask
     sort:
       - property: file.name
         direction: ASC
@@ -501,6 +502,7 @@ views:
       - file.name
       - type
       - formula.ownerName
+      - isTask
     sort:
       - property: type
         direction: ASC
@@ -625,7 +627,38 @@ views:
       - formula.ownerName
       - formula.reviewStatus
       - review_date
-      - review_cycle
+      - review_cycle`,
+
+	"Bulk Generate — Results": `filters:
+  and:
+    - file.inFolder("TaskNotes/Tasks")
+    - isTask == true
+formulas:
+  projectName: if(projects, projects.map(p, p.replace("[[", "").replace("]]", "")).join(", "), "—")
+properties:
+  file.name:
+    displayName: Task
+  status:
+    displayName: Status
+  priority:
+    displayName: Priority
+  due:
+    displayName: Due
+  formula.projectName:
+    displayName: Source Document
+views:
+  - type: tasknotesTaskList
+    name: Generated Tasks
+    order:
+      - file.name
+      - status
+      - priority
+      - due
+      - formula.projectName
+    sort:
+      - property: file.ctime
+        direction: DESC
+    enableSearch: true
     sort:
       - property: formula.daysUntilReview
         direction: ASC
