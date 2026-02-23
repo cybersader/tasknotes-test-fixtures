@@ -25,15 +25,24 @@ An Obsidian plugin that generates test data for [TaskNotes](https://github.com/c
 3. Place both files there
 4. Enable the plugin
 
+## TaskNotes integration
+
+When TaskNotes is installed and enabled, the test-fixtures plugin reads its live settings to generate data that matches your configuration -- property names, field mappings, identity settings, and tags all come from TaskNotes automatically. If TaskNotes is not installed, sensible defaults are used.
+
+The "Full test setup" command goes further: it configures TaskNotes settings to match the test data, so you get a working test environment in one step. Your previous settings are backed up and can be restored at any time.
+
 ## Commands
 
 Open the command palette (Ctrl/Cmd+P) and search for:
 
 | Command | Description |
 |---------|-------------|
-| **Generate all test data** | Creates all files (overwrites existing generated files) |
+| **Generate all test data** | Creates all files using TaskNotes settings for property names |
 | **Clean and regenerate all test data** | Deletes all generated files, then creates fresh ones |
 | **Remove all generated test data** | Deletes all generated files without regenerating |
+| **Full test setup (configure + generate)** | Configures TaskNotes settings, then cleans and generates all test data |
+| **Configure TaskNotes settings for test data** | Backs up current settings, applies test-friendly config |
+| **Restore TaskNotes settings from backup** | Restores your original TaskNotes settings |
 
 ## Settings
 

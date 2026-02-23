@@ -23,6 +23,94 @@ const DEFAULT_SETTINGS: TestFixturesSettings = {
 };
 
 // ============================================================
+// GENERATION CONTEXT (reads from TaskNotes at runtime)
+// ============================================================
+
+interface GenerationContext {
+	assigneeField: string;
+	creatorField: string;
+	typeProperty: string;
+	personTypeValue: string;
+	groupTypeValue: string;
+	personTag: string;
+	groupTag: string;
+	taskTag: string;
+	fieldMapping: {
+		title: string;
+		status: string;
+		priority: string;
+		due: string;
+		scheduled: string;
+		contexts: string;
+		projects: string;
+		timeEstimate: string;
+		completedDate: string;
+		dateCreated: string;
+		recurrence: string;
+		reminders: string;
+		blockedBy: string;
+	};
+}
+
+const DEFAULT_CONTEXT: GenerationContext = {
+	assigneeField: "assignee",
+	creatorField: "creator",
+	typeProperty: "type",
+	personTypeValue: "person",
+	groupTypeValue: "group",
+	personTag: "person",
+	groupTag: "group",
+	taskTag: "task",
+	fieldMapping: {
+		title: "title",
+		status: "status",
+		priority: "priority",
+		due: "due",
+		scheduled: "scheduled",
+		contexts: "contexts",
+		projects: "projects",
+		timeEstimate: "timeEstimate",
+		completedDate: "completedDate",
+		dateCreated: "dateCreated",
+		recurrence: "recurrence",
+		reminders: "reminders",
+		blockedBy: "blockedBy",
+	},
+};
+
+function buildContextFromTaskNotes(app: App): GenerationContext {
+	const tn = (app as any).plugins?.plugins?.tasknotes;
+	if (!tn?.settings) return DEFAULT_CONTEXT;
+	const s = tn.settings;
+	const fm = s.fieldMapping || {};
+	return {
+		assigneeField: s.assigneeFieldName || DEFAULT_CONTEXT.assigneeField,
+		creatorField: s.creatorFieldName || DEFAULT_CONTEXT.creatorField,
+		typeProperty: s.identityTypePropertyName || DEFAULT_CONTEXT.typeProperty,
+		personTypeValue: s.personTypeValue || DEFAULT_CONTEXT.personTypeValue,
+		groupTypeValue: s.groupTypeValue || DEFAULT_CONTEXT.groupTypeValue,
+		personTag: s.personNotesTag || DEFAULT_CONTEXT.personTag,
+		groupTag: s.groupNotesTag || DEFAULT_CONTEXT.groupTag,
+		taskTag: s.taskTag || DEFAULT_CONTEXT.taskTag,
+		fieldMapping: {
+			title: fm.title || "title",
+			status: fm.status || "status",
+			priority: fm.priority || "priority",
+			due: fm.due || "due",
+			scheduled: fm.scheduled || "scheduled",
+			contexts: fm.contexts || "contexts",
+			projects: fm.projects || "projects",
+			timeEstimate: fm.timeEstimate || "timeEstimate",
+			completedDate: fm.completedDate || "completedDate",
+			dateCreated: fm.dateCreated || "dateCreated",
+			recurrence: fm.recurrence || "recurrence",
+			reminders: fm.reminders || "reminders",
+			blockedBy: fm.blockedBy || "blockedBy",
+		},
+	};
+}
+
+// ============================================================
 // DATA DEFINITIONS
 // ============================================================
 
@@ -1605,9 +1693,9 @@ function resolveOffset(offset: number | string | undefined): string | undefined 
 // CONTENT GENERATORS
 // ============================================================
 
-function generatePersonContent(person: PersonDef): string {
+function generatePersonContent(person: PersonDef, ctx: GenerationContext): string {
 	const lines: string[] = [];
-	lines.push(`type: person`);
+	lines.push(`${ctx.typeProperty}: ${ctx.personTypeValue}`);
 	lines.push(`email: "${person.email}"`);
 	lines.push(`role: ${person.role}`);
 	lines.push(`department: ${person.department}`);
@@ -1615,15 +1703,15 @@ function generatePersonContent(person: PersonDef): string {
 	lines.push(`reminderTime: "${person.reminderTime}"`);
 	lines.push(`notificationEnabled: true`);
 	lines.push(`tags:`);
-	lines.push(`  - person`);
+	lines.push(`  - ${ctx.personTag}`);
 	lines.push(`  - ${person.department.toLowerCase().replace(/\s+/g, "-")}`);
 
 	return `---\n${lines.join("\n")}\n---\n\n# ${person.name}\n\n## Role\n\n${person.role} in the ${person.department} department.\n\n## Contact\n\n- Email: ${person.email}\n`;
 }
 
-function generateGroupContent(group: GroupDef): string {
+function generateGroupContent(group: GroupDef, ctx: GenerationContext): string {
 	const memberLinks = group.members.map(m => `  - "[[${m}]]"`).join("\n");
-	return `---\ntype: group\ntitle: ${group.name}\nmembers:\n${memberLinks}\ntags:\n  - group\n---\n\n# ${group.name}\n\n${group.description}\n\n## Members\n\n${group.members.map(m => `- [[${m}]]`).join("\n")}\n`;
+	return `---\n${ctx.typeProperty}: ${ctx.groupTypeValue}\ntitle: ${group.name}\nmembers:\n${memberLinks}\ntags:\n  - ${ctx.groupTag}\n---\n\n# ${group.name}\n\n${group.description}\n\n## Members\n\n${group.members.map(m => `- [[${m}]]`).join("\n")}\n`;
 }
 
 function generateDocumentContent(doc: DocumentDef): string {
@@ -1644,36 +1732,37 @@ function generateDocumentContent(doc: DocumentDef): string {
 	return doc.content;
 }
 
-function generateTaskContent(task: TaskDef): string {
+function generateTaskContent(task: TaskDef, ctx: GenerationContext): string {
+	const fm = ctx.fieldMapping;
 	const lines: string[] = [];
 	lines.push(`isTask: true`);
-	lines.push(`title: "${task.name}"`);
-	lines.push(`status: ${task.status}`);
-	lines.push(`priority: ${task.priority}`);
+	lines.push(`${fm.title}: "${task.name}"`);
+	lines.push(`${fm.status}: ${task.status}`);
+	lines.push(`${fm.priority}: ${task.priority}`);
 
 	const due = resolveOffset(task.due_offset);
-	if (due) lines.push(`due: ${due}`);
+	if (due) lines.push(`${fm.due}: ${due}`);
 	const scheduled = resolveOffset(task.scheduled_offset);
-	if (scheduled) lines.push(`scheduled: ${scheduled}`);
+	if (scheduled) lines.push(`${fm.scheduled}: ${scheduled}`);
 	const completed = resolveOffset(task.completedDate_offset);
-	if (completed) lines.push(`completedDate: ${completed}`);
-	lines.push(`dateCreated: ${getDateStr(0)}`);
+	if (completed) lines.push(`${fm.completedDate}: ${completed}`);
+	lines.push(`${fm.dateCreated}: ${getDateStr(0)}`);
 
-	if (task.assignee) lines.push(`assignee: "[[${task.assignee}]]"`);
+	if (task.assignee) lines.push(`${ctx.assigneeField}: "[[${task.assignee}]]"`);
 	if (task.projects) {
-		lines.push(`projects:`);
+		lines.push(`${fm.projects}:`);
 		for (const p of task.projects) lines.push(`  - "[[${p}]]"`);
 	}
 	if (task.contexts) {
-		lines.push(`contexts:`);
+		lines.push(`${fm.contexts}:`);
 		for (const c of task.contexts) lines.push(`  - ${c}`);
 	}
 	lines.push(`tags:`);
-	lines.push(`  - task`);
-	if (task.timeEstimate) lines.push(`timeEstimate: ${task.timeEstimate}`);
-	if (task.recurrence) lines.push(`recurrence: "${task.recurrence}"`);
+	lines.push(`  - ${ctx.taskTag}`);
+	if (task.timeEstimate) lines.push(`${fm.timeEstimate}: ${task.timeEstimate}`);
+	if (task.recurrence) lines.push(`${fm.recurrence}: "${task.recurrence}"`);
 	if (task.reminders) {
-		lines.push(`reminders:`);
+		lines.push(`${fm.reminders}:`);
 		for (const r of task.reminders) {
 			lines.push(`  - id: "${r.id}"`);
 			lines.push(`    type: "${r.type}"`);
@@ -1685,7 +1774,7 @@ function generateTaskContent(task: TaskDef): string {
 		}
 	}
 	if (task.blockedBy) {
-		lines.push(`blockedBy:`);
+		lines.push(`${fm.blockedBy}:`);
 		for (const b of task.blockedBy) lines.push(`  - "[[${b}]]"`);
 	}
 	if (task.blocking) {
@@ -1697,7 +1786,7 @@ function generateTaskContent(task: TaskDef): string {
 		lines.push(`subtasks:`);
 		for (const s of task.subtasks) lines.push(`  - "[[${s}]]"`);
 	}
-	if (task.creator) lines.push(`creator: "[[${task.creator}]]"`);
+	if (task.creator) lines.push(`${ctx.creatorField}: "[[${task.creator}]]"`);
 
 	return `---\n${lines.join("\n")}\n---\n\n# ${task.name}\n\nTask details go here.\n`;
 }
@@ -1709,10 +1798,12 @@ function generateTaskContent(task: TaskDef): string {
 class TestDataGenerator {
 	private app: App;
 	private settings: TestFixturesSettings;
+	private ctx: GenerationContext;
 
-	constructor(app: App, settings: TestFixturesSettings) {
+	constructor(app: App, settings: TestFixturesSettings, ctx: GenerationContext) {
 		this.app = app;
 		this.settings = settings;
+		this.ctx = ctx;
 	}
 
 	private async ensureFolder(path: string): Promise<void> {
@@ -1786,13 +1877,13 @@ class TestDataGenerator {
 
 		// People
 		for (const person of PERSONS) {
-			await this.createOrOverwrite(`${s.peopleFolder}/${person.name}.md`, generatePersonContent(person));
+			await this.createOrOverwrite(`${s.peopleFolder}/${person.name}.md`, generatePersonContent(person, this.ctx));
 		}
 		msgs.push(`${PERSONS.length} person notes`);
 
 		// Groups
 		for (const group of GROUPS) {
-			await this.createOrOverwrite(`${s.groupsFolder}/${group.name}.md`, generateGroupContent(group));
+			await this.createOrOverwrite(`${s.groupsFolder}/${group.name}.md`, generateGroupContent(group, this.ctx));
 		}
 		msgs.push(`${GROUPS.length} group notes`);
 
@@ -1804,7 +1895,7 @@ class TestDataGenerator {
 
 		// Tasks
 		for (const task of TASKS) {
-			await this.createOrOverwrite(`${s.tasksFolder}/${task.name}.md`, generateTaskContent(task));
+			await this.createOrOverwrite(`${s.tasksFolder}/${task.name}.md`, generateTaskContent(task, this.ctx));
 		}
 		msgs.push(`${TASKS.length} task notes`);
 
@@ -1879,7 +1970,8 @@ export default class TestFixturesPlugin extends Plugin {
 			id: "generate-all",
 			name: "Generate all test data",
 			callback: async () => {
-				const gen = new TestDataGenerator(this.app, this.settings);
+				const ctx = buildContextFromTaskNotes(this.app);
+				const gen = new TestDataGenerator(this.app, this.settings, ctx);
 				new Notice("Generating test data...");
 				try {
 					const result = await gen.generateAll();
@@ -1895,7 +1987,8 @@ export default class TestFixturesPlugin extends Plugin {
 			id: "clean-and-generate",
 			name: "Clean and regenerate all test data",
 			callback: async () => {
-				const gen = new TestDataGenerator(this.app, this.settings);
+				const ctx = buildContextFromTaskNotes(this.app);
+				const gen = new TestDataGenerator(this.app, this.settings, ctx);
 				new Notice("Cleaning existing data...");
 				try {
 					const cleanResult = await gen.cleanAll();
@@ -1914,7 +2007,8 @@ export default class TestFixturesPlugin extends Plugin {
 			id: "clean-only",
 			name: "Remove all generated test data",
 			callback: async () => {
-				const gen = new TestDataGenerator(this.app, this.settings);
+				const ctx = buildContextFromTaskNotes(this.app);
+				const gen = new TestDataGenerator(this.app, this.settings, ctx);
 				new Notice("Cleaning test data...");
 				try {
 					const result = await gen.cleanAll();
@@ -1922,6 +2016,151 @@ export default class TestFixturesPlugin extends Plugin {
 				} catch (e) {
 					new Notice(`Error: ${e}`);
 					console.error("Test fixtures clean error:", e);
+				}
+			},
+		});
+
+		this.addCommand({
+			id: "configure-tasknotes",
+			name: "Configure TaskNotes settings for test data",
+			callback: async () => {
+				const tn = (this.app as any).plugins?.plugins?.tasknotes;
+				if (!tn?.settings) {
+					new Notice("TaskNotes plugin is not installed or enabled");
+					return;
+				}
+				// Backup current settings
+				const backup = JSON.parse(JSON.stringify(tn.settings));
+				const data = await this.loadData() || {};
+				data.backupSettings = backup;
+				await this.saveData(data);
+
+				// Apply test-friendly settings
+				const s = tn.settings;
+				s.taskIdentificationMethod = "property";
+				s.taskPropertyName = "isTask";
+				s.taskPropertyValue = "true";
+				s.taskTag = "task";
+				s.tasksFolder = this.settings.tasksFolder;
+				s.personNotesFolder = this.settings.peopleFolder;
+				s.groupNotesFolder = this.settings.groupsFolder;
+				s.personNotesTag = "person";
+				s.groupNotesTag = "group";
+				s.identityTypePropertyName = "type";
+				s.personTypeValue = "person";
+				s.groupTypeValue = "group";
+				s.autoSetCreator = true;
+				s.creatorFieldName = "creator";
+				s.assigneeFieldName = "assignee";
+				s.enableBases = true;
+				s.enableBulkActionsButton = true;
+				s.enableNotifications = true;
+				s.enableUniversalBasesButtons = true;
+
+				// Reset field mapping to defaults
+				s.fieldMapping = {
+					title: "title", status: "status", priority: "priority",
+					due: "due", scheduled: "scheduled", contexts: "contexts",
+					projects: "projects", timeEstimate: "timeEstimate",
+					completedDate: "completedDate", dateCreated: "dateCreated",
+					dateModified: "dateModified", recurrence: "recurrence",
+					recurrenceAnchor: "recurrence_anchor", archiveTag: "archived",
+					timeEntries: "timeEntries", completeInstances: "complete_instances",
+					skippedInstances: "skipped_instances", blockedBy: "blockedBy",
+					pomodoros: "pomodoros", icsEventId: "icsEventId",
+					icsEventTag: "ics_event", googleCalendarEventId: "googleCalendarEventId",
+					reminders: "reminders",
+				};
+
+				await tn.saveSettings();
+				new Notice("TaskNotes configured for testing. Previous settings backed up.");
+			},
+		});
+
+		this.addCommand({
+			id: "restore-tasknotes",
+			name: "Restore TaskNotes settings from backup",
+			callback: async () => {
+				const tn = (this.app as any).plugins?.plugins?.tasknotes;
+				if (!tn?.settings) {
+					new Notice("TaskNotes plugin is not installed or enabled");
+					return;
+				}
+				const data = await this.loadData() || {};
+				if (!data.backupSettings) {
+					new Notice("No backup found. Run 'Configure TaskNotes for testing' first.");
+					return;
+				}
+				Object.assign(tn.settings, data.backupSettings);
+				await tn.saveSettings();
+				delete data.backupSettings;
+				await this.saveData(data);
+				new Notice("TaskNotes settings restored from backup.");
+			},
+		});
+
+		this.addCommand({
+			id: "full-test-setup",
+			name: "Full test setup (configure + generate)",
+			callback: async () => {
+				const tn = (this.app as any).plugins?.plugins?.tasknotes;
+				if (!tn?.settings) {
+					new Notice("TaskNotes plugin is not installed or enabled");
+					return;
+				}
+
+				// Step 1: Configure TaskNotes
+				const backup = JSON.parse(JSON.stringify(tn.settings));
+				const data = await this.loadData() || {};
+				data.backupSettings = backup;
+				await this.saveData(data);
+
+				const s = tn.settings;
+				s.taskIdentificationMethod = "property";
+				s.taskPropertyName = "isTask";
+				s.taskPropertyValue = "true";
+				s.taskTag = "task";
+				s.tasksFolder = this.settings.tasksFolder;
+				s.personNotesFolder = this.settings.peopleFolder;
+				s.groupNotesFolder = this.settings.groupsFolder;
+				s.personNotesTag = "person";
+				s.groupNotesTag = "group";
+				s.identityTypePropertyName = "type";
+				s.personTypeValue = "person";
+				s.groupTypeValue = "group";
+				s.autoSetCreator = true;
+				s.creatorFieldName = "creator";
+				s.assigneeFieldName = "assignee";
+				s.enableBases = true;
+				s.enableBulkActionsButton = true;
+				s.enableNotifications = true;
+				s.enableUniversalBasesButtons = true;
+				s.fieldMapping = {
+					title: "title", status: "status", priority: "priority",
+					due: "due", scheduled: "scheduled", contexts: "contexts",
+					projects: "projects", timeEstimate: "timeEstimate",
+					completedDate: "completedDate", dateCreated: "dateCreated",
+					dateModified: "dateModified", recurrence: "recurrence",
+					recurrenceAnchor: "recurrence_anchor", archiveTag: "archived",
+					timeEntries: "timeEntries", completeInstances: "complete_instances",
+					skippedInstances: "skipped_instances", blockedBy: "blockedBy",
+					pomodoros: "pomodoros", icsEventId: "icsEventId",
+					icsEventTag: "ics_event", googleCalendarEventId: "googleCalendarEventId",
+					reminders: "reminders",
+				};
+				await tn.saveSettings();
+
+				// Step 2: Clean and regenerate
+				const ctx = buildContextFromTaskNotes(this.app);
+				const gen = new TestDataGenerator(this.app, this.settings, ctx);
+				new Notice("Setting up test environment...");
+				try {
+					await gen.cleanAll();
+					const result = await gen.generateAll();
+					new Notice(`Test environment ready!\nTaskNotes configured, ${result}`);
+				} catch (e) {
+					new Notice(`Error: ${e}`);
+					console.error("Full test setup error:", e);
 				}
 			},
 		});

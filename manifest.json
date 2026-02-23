@@ -1,7 +1,7 @@
 {
   "id": "tasknotes-test-fixtures",
   "name": "TaskNotes Test Fixtures",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "minAppVersion": "1.10.1",
   "description": "Generates test data (people, groups, documents, tasks, demo views) for TaskNotes development and testing.",
   "author": "Cybersader",
