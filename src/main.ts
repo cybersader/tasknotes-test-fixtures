@@ -1,6 +1,66 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting } from "obsidian";
 
 // ============================================================
+// TASKNOTES TEST FIXTURES
+// ============================================================
+//
+// Generates test data for TaskNotes development. After running
+// "Generate all test data" or "Full test setup", files appear at:
+//
+//   User-DB/People/          7 person notes (roles, departments)
+//   User-DB/Groups/          5 group notes (nested membership)
+//   Document Library, Knowledge/
+//     ├── Projects/          5 docs
+//     ├── Compliance/        5 docs
+//     ├── Technical/         6 docs
+//     ├── HR/                5 docs
+//     ├── Meeting Notes/     5 docs (no metadata)
+//     ├── Research/          4 docs
+//     ├── Templates/         4 docs (no metadata)
+//     ├── Design/            3 docs
+//     ├── Operations/        3 docs
+//     └── Security/          3 docs
+//   TaskNotes/Tasks/         50 task notes (various statuses, dates, deps)
+//   TaskNotes/Demos/         18 demo .base views
+//
+// All folder paths are configurable in plugin settings.
+//
+// USING THE DEMO .BASE VIEWS
+//
+// After generation, open any .base file in the TaskNotes/Demos/
+// folder to see it rendered as a TaskNotes Bases view. Key demos:
+//
+//   Bulk Generate Demo    -- documents ready for bulk task generation
+//   Bulk Edit Demo        -- active tasks for bulk editing
+//   Bulk Convert Demo     -- non-task notes that can be converted
+//   Notification Demo     -- urgent/overdue items (has notify: true)
+//   Documents Coming Due  -- document review tracking (has notify: true)
+//   Shared Vault Demo     -- team dashboard with assignee/creator
+//   Priority Dashboard    -- kanban + urgency scoring
+//   Statistics Demo       -- task counts by status/project/age
+//   Recurring Tasks Demo  -- daily/weekly/monthly patterns
+//   Reminders Demo        -- tasks with reminder configurations
+//   Time Tracking Demo    -- estimate vs tracked time
+//   Project Dependencies  -- blockedBy/blocking relationships
+//
+// To test bulk generation: open "Bulk Generate Demo.base", select
+// rows in the TaskNotes task list view, click "Bulk tasking" in the
+// toolbar, then use "Generate tasks from selection".
+//
+// To test notifications: ensure TaskNotes has notifications enabled,
+// then open "Notification Demo.base" or "Documents Coming Due.base"
+// -- the notify: true flag in the YAML triggers the notification
+// watcher when results match.
+//
+// SMART SYNC BEHAVIOR
+//
+// "Generate all" and "Sync test data" compare file content before
+// writing. Unchanged files are skipped (no Obsidian re-indexing).
+// "Sync test data" also removes stale files not in the expected set.
+// Task due dates use offsets from today, so task files change daily
+// but people/groups/demos stay unchanged between runs.
+
+// ============================================================
 // PROGRESS MODAL
 // ============================================================
 

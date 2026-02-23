@@ -38,10 +38,10 @@ Open the command palette (Ctrl/Cmd+P) and search for:
 
 | Command | Description |
 |---------|-------------|
-| **Generate all test data** | Creates all files using TaskNotes settings for property names |
-| **Clean and regenerate all test data** | Deletes all generated files, then creates fresh ones |
+| **Generate all test data** | Creates/updates files, skipping unchanged ones |
+| **Sync test data** | Writes changed files + removes stale files not in fixture set |
 | **Remove all generated test data** | Deletes all generated files without regenerating |
-| **Full test setup (configure + generate)** | Configures TaskNotes settings, then cleans and generates all test data |
+| **Full test setup (configure + generate)** | Configures TaskNotes settings, then syncs all test data |
 | **Configure TaskNotes settings for test data** | Backs up current settings, applies test-friendly config |
 | **Restore TaskNotes settings from backup** | Restores your original TaskNotes settings |
 
