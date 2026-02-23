@@ -1930,6 +1930,47 @@ class TestDataGenerator {
 		return count;
 	}
 
+	/** Returns all file paths that the generator expects to exist. */
+	private expectedPaths(): Set<string> {
+		const s = this.settings;
+		const paths = new Set<string>();
+		for (const p of PERSONS) paths.add(`${s.peopleFolder}/${p.name}.md`);
+		for (const g of GROUPS) paths.add(`${s.groupsFolder}/${g.name}.md`);
+		for (const d of DOCUMENTS) paths.add(`${s.documentsFolder}/${d.subfolder}/${d.name}.md`);
+		for (const t of TASKS) paths.add(`${s.tasksFolder}/${t.name}.md`);
+		for (const name of Object.keys(DEMO_BASES)) paths.add(`${s.demosFolder}/${name}.base`);
+		return paths;
+	}
+
+	/** Remove files in managed folders that aren't in the expected set. */
+	async syncRemoveStale(): Promise<number> {
+		const expected = this.expectedPaths();
+		const s = this.settings;
+		let removed = 0;
+		const folders = [
+			s.peopleFolder, s.groupsFolder, s.tasksFolder, s.demosFolder,
+		];
+		const docSubdirs = ["Projects", "Compliance", "Technical", "HR", "Meeting Notes", "Research", "Templates", "Design", "Operations", "Security"];
+		for (const sub of docSubdirs) {
+			folders.push(`${s.documentsFolder}/${sub}`);
+		}
+		for (const folder of folders) {
+			if (!(await this.app.vault.adapter.exists(folder))) continue;
+			const listing = await this.app.vault.adapter.list(folder);
+			for (const file of listing.files) {
+				if (!expected.has(file)) {
+					try {
+						const f = this.app.vault.getAbstractFileByPath(file);
+						if (f) { await this.app.vault.delete(f); }
+						else { await this.app.vault.adapter.remove(file); }
+						removed++;
+					} catch { /* skip */ }
+				}
+			}
+		}
+		return removed;
+	}
+
 	async cleanAll(): Promise<string> {
 		const msgs: string[] = [];
 		const s = this.settings;
@@ -2164,18 +2205,18 @@ export default class TestFixturesPlugin extends Plugin {
 
 		this.addCommand({
 			id: "clean-and-generate",
-			name: "Clean and regenerate all test data",
+			name: "Sync test data (write changed, remove stale)",
 			callback: async () => {
 				const modal = new ProgressModal(this.app);
 				modal.open();
 				const ctx = buildContextFromTaskNotes(this.app);
 				const gen = new TestDataGenerator(this.app, this.settings, ctx, modal);
 				try {
-					modal.addLog("Phase 1: Cleaning...");
-					await gen.cleanAll();
-					modal.addLog("Phase 2: Generating...");
 					const result = await gen.generateAll();
-					modal.setDone(`Generated: ${result}`);
+					modal.addLog("Removing stale files...");
+					const stale = await gen.syncRemoveStale();
+					const summary = stale > 0 ? `${result}, ${stale} stale removed` : result;
+					modal.setDone(summary);
 				} catch (e) {
 					modal.setError(`${e}`);
 					console.error("Test fixtures error:", e);
@@ -2268,15 +2309,15 @@ export default class TestFixturesPlugin extends Plugin {
 				await tn.saveSettings();
 				modal.addLog("TaskNotes settings applied");
 
-				// Step 2: Clean and regenerate
+				// Step 2: Sync test data
 				const ctx = buildContextFromTaskNotes(this.app);
 				const gen = new TestDataGenerator(this.app, this.settings, ctx, modal);
 				try {
-					modal.addLog("Phase 2: Cleaning...");
-					await gen.cleanAll();
-					modal.addLog("Phase 3: Generating...");
 					const result = await gen.generateAll();
-					modal.setDone(`TaskNotes configured, ${result}`);
+					modal.addLog("Removing stale files...");
+					const stale = await gen.syncRemoveStale();
+					const summary = stale > 0 ? `${result}, ${stale} stale removed` : result;
+					modal.setDone(`TaskNotes configured, ${summary}`);
 				} catch (e) {
 					modal.setError(`${e}`);
 					console.error("Full test setup error:", e);
