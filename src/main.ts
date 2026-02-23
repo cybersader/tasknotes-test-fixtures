@@ -647,7 +647,7 @@ properties:
   formula.projectName:
     displayName: Source Document
 views:
-  - type: tasknotesTaskList
+  - type: tasknotesUpcoming
     name: Generated Tasks
     order:
       - file.name
@@ -657,8 +657,7 @@ views:
       - formula.projectName
     sort:
       - property: file.ctime
-        direction: DESC
-    enableSearch: true`,
+        direction: DESC`,
 
 	"Notification Demo": `filters:
   and:
