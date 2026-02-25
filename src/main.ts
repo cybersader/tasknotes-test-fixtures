@@ -305,6 +305,8 @@ interface TaskDef {
 	parent?: string;
 	subtasks?: string[];
 	completedDate_offset?: number | "yesterday";
+	/** Arbitrary extra frontmatter for testing PropertyPicker / "Use as" conversion flows */
+	customProperties?: Record<string, string | number | boolean | string[]>;
 }
 
 const PERSONS: PersonDef[] = [
@@ -392,22 +394,22 @@ const DOCUMENTS: DocumentDef[] = [
 
 const TASKS: TaskDef[] = [
 	// Overdue
-	{ name: "Review security findings", status: "pending", priority: "high", due_offset: -3, assignee: "Bob Wilson", creator: "Carol Davis", projects: ["Security Audit Checklist"], timeEstimate: 60, contexts: ["security", "audit"], reminders: [{ id: "rem_sec_1", type: "relative", relatedTo: "due", offset: 1, unit: "days", direction: "before", description: "1 day before due" }] },
-	{ name: "Submit compliance report", status: "pending", priority: "high", due_offset: -1, assignee: "Bob Wilson", creator: "Carol Davis", projects: ["SOC 2 Type II Preparation"], timeEstimate: 120, contexts: ["compliance"], blockedBy: ["Review security findings"] },
-	{ name: "Finalize vendor assessment", status: "pending", priority: "medium", due_offset: -2, assignee: "Bob Wilson", creator: "Bob Wilson", projects: ["Vendor Security Assessment Template"], contexts: ["compliance", "vendor"], timeEstimate: 90 },
+	{ name: "Review security findings", status: "pending", priority: "high", due_offset: -3, assignee: "Bob Wilson", creator: "Carol Davis", projects: ["Security Audit Checklist"], timeEstimate: 60, contexts: ["security", "audit"], reminders: [{ id: "rem_sec_1", type: "relative", relatedTo: "due", offset: 1, unit: "days", direction: "before", description: "1 day before due" }], customProperties: { convert_test: "March 10, 2026" } },
+	{ name: "Submit compliance report", status: "pending", priority: "high", due_offset: -1, assignee: "Bob Wilson", creator: "Carol Davis", projects: ["SOC 2 Type II Preparation"], timeEstimate: 120, contexts: ["compliance"], blockedBy: ["Review security findings"], customProperties: { convert_test: "Mar 5, 2026" } },
+	{ name: "Finalize vendor assessment", status: "pending", priority: "medium", due_offset: -2, assignee: "Bob Wilson", creator: "Bob Wilson", projects: ["Vendor Security Assessment Template"], contexts: ["compliance", "vendor"], timeEstimate: 90, customProperties: { convert_test: "Feb 20, 2026" } },
 
 	// Due today
-	{ name: "Update API documentation", status: "in-progress", priority: "medium", scheduled_offset: "today", due_offset: 2, assignee: "Alice Chen", creator: "Alice Chen", projects: ["API Documentation"], timeEstimate: 90, contexts: ["documentation", "api"], blocking: ["Write integration tests for API"] },
-	{ name: "Deploy hotfix to production", status: "pending", priority: "high", due_offset: "today", scheduled_offset: "today", assignee: "David Kim", creator: "Cybersader", contexts: ["urgent", "production"], reminders: [{ id: "rem_deploy_1", type: "relative", relatedTo: "due", offset: 1, unit: "hours", direction: "before", description: "1 hour before due" }, { id: "rem_deploy_2", type: "relative", relatedTo: "due", offset: 30, unit: "minutes", direction: "before", description: "30 min before due" }], blockedBy: ["Run staging environment tests"] },
+	{ name: "Update API documentation", status: "in-progress", priority: "medium", scheduled_offset: "today", due_offset: 2, assignee: "Alice Chen", creator: "Alice Chen", projects: ["API Documentation"], timeEstimate: 90, contexts: ["documentation", "api"], blocking: ["Write integration tests for API"], customProperties: { deadline: "2026-03-15", effort: "90", category: "documentation" } },
+	{ name: "Deploy hotfix to production", status: "pending", priority: "high", due_offset: "today", scheduled_offset: "today", assignee: "David Kim", creator: "Cybersader", contexts: ["urgent", "production"], reminders: [{ id: "rem_deploy_1", type: "relative", relatedTo: "due", offset: 1, unit: "hours", direction: "before", description: "1 hour before due" }, { id: "rem_deploy_2", type: "relative", relatedTo: "due", offset: 30, unit: "minutes", direction: "before", description: "30 min before due" }], blockedBy: ["Run staging environment tests"], customProperties: { convert_test: "Feb 25, 2026" } },
 	{ name: "Review pull requests", status: "pending", priority: "medium", due_offset: "today", assignee: "Core Reviewers", projects: ["Sprint 42 Planning"], contexts: ["code-review"], timeEstimate: 60 },
 
 	// Due tomorrow
-	{ name: "Complete sprint planning", status: "pending", priority: "high", due_offset: "tomorrow", scheduled_offset: "today", assignee: "Carol Davis", creator: "Carol Davis", projects: ["Sprint 42 Planning"], contexts: ["meeting", "planning"], timeEstimate: 120, reminders: [{ id: "rem_sprint_1", type: "relative", relatedTo: "due", offset: 2, unit: "hours", direction: "before", description: "2 hours before meeting" }], subtasks: ["Prepare demo for stakeholders", "Write sprint retrospective notes"] },
+	{ name: "Complete sprint planning", status: "pending", priority: "high", due_offset: "tomorrow", scheduled_offset: "today", assignee: "Carol Davis", creator: "Carol Davis", projects: ["Sprint 42 Planning"], contexts: ["meeting", "planning"], timeEstimate: 120, reminders: [{ id: "rem_sprint_1", type: "relative", relatedTo: "due", offset: 2, unit: "hours", direction: "before", description: "2 hours before meeting" }], subtasks: ["Prepare demo for stakeholders", "Write sprint retrospective notes"], customProperties: { deadline: "2026-03-01", effort: "120", category: "planning" } },
 	{ name: "Finalize design mockups", status: "in-progress", priority: "medium", due_offset: "tomorrow", scheduled_offset: "today", assignee: "Eva Martinez", creator: "Carol Davis", projects: ["Mobile App Initiative"], contexts: ["design", "mobile"], timeEstimate: 180, blocking: ["Implement mobile navigation component"] },
 	{ name: "Design review meeting", status: "pending", priority: "medium", due_offset: "tomorrow", assignee: "Product Team", contexts: ["meeting", "design"], reminders: [{ id: "rem_design_1", type: "relative", relatedTo: "due", offset: 1, unit: "hours", direction: "before", description: "1 hour before meeting" }] },
 
 	// Due this week
-	{ name: "Fix notification bugs", status: "in-progress", priority: "medium", due_offset: 3, scheduled_offset: "today", assignee: "Cybersader", creator: "Cybersader", contexts: ["bug", "notifications"], timeEstimate: 45, blocking: ["Write unit tests for notification service"] },
+	{ name: "Fix notification bugs", status: "in-progress", priority: "medium", due_offset: 3, scheduled_offset: "today", assignee: "Cybersader", creator: "Cybersader", contexts: ["bug", "notifications"], timeEstimate: 45, blocking: ["Write unit tests for notification service"], customProperties: { deadline: "2026-02-28", effort: "45", category: "bugfix" } },
 	{ name: "Write unit tests for avatar component", status: "pending", priority: "low", due_offset: 4, assignee: "Alice Chen", creator: "Alice Chen", contexts: ["testing"], timeEstimate: 120, blockedBy: ["Design avatar component"] },
 	{ name: "Prepare demo for stakeholders", status: "pending", priority: "high", due_offset: 5, assignee: "Carol Davis", projects: ["Project Alpha Requirements"], contexts: ["presentation"], parent: "Complete sprint planning", reminders: [{ id: "rem_demo_1", type: "relative", relatedTo: "due", offset: 1, unit: "days", direction: "before", description: "1 day before demo" }, { id: "rem_demo_2", type: "relative", relatedTo: "due", offset: 3, unit: "hours", direction: "before", description: "3 hours before demo" }], timeEstimate: 60 },
 	{ name: "Run staging environment tests", status: "in-progress", priority: "high", due_offset: 2, assignee: "Frank Johnson", creator: "David Kim", contexts: ["testing", "staging"], timeEstimate: 90, blocking: ["Deploy hotfix to production"] },
@@ -418,7 +420,7 @@ const TASKS: TaskDef[] = [
 	{ name: "Weekly standup", status: "pending", priority: "medium", due_offset: 7, scheduled_offset: 7, assignee: "Engineering Team", contexts: ["meeting"], recurrence: "FREQ=WEEKLY;BYDAY=MO", reminders: [{ id: "rem_standup_1", type: "relative", relatedTo: "due", offset: 15, unit: "minutes", direction: "before", description: "15 min before standup" }] },
 	{ name: "Complete database migration", status: "pending", priority: "medium", due_offset: "next_week", assignee: "David Kim", creator: "Cybersader", projects: ["Architecture Overview"], timeEstimate: 240, blocking: ["Update runbooks", "Verify database backup integrity"], contexts: ["database", "migration"] },
 	{ name: "Update runbooks", status: "pending", priority: "low", due_offset: 10, assignee: "David Kim", projects: ["Runbook - Database Failover"], contexts: ["documentation"], blockedBy: ["Complete database migration"] },
-	{ name: "Conduct user interviews", status: "pending", priority: "medium", due_offset: 12, scheduled_offset: 10, assignee: "Eva Martinez", creator: "Carol Davis", projects: ["User Feedback Summary Q4 2025"], contexts: ["research", "ux"], timeEstimate: 120, reminders: [{ id: "rem_interview_1", type: "relative", relatedTo: "due", offset: 2, unit: "days", direction: "before", description: "2 days before interviews" }] },
+	{ name: "Conduct user interviews", status: "pending", priority: "medium", due_offset: 12, scheduled_offset: 10, assignee: "Eva Martinez", creator: "Carol Davis", projects: ["User Feedback Summary Q4 2025"], contexts: ["research", "ux"], timeEstimate: 120, reminders: [{ id: "rem_interview_1", type: "relative", relatedTo: "due", offset: 2, unit: "days", direction: "before", description: "2 days before interviews" }], customProperties: { convert_test: "Mar 20, 2026" } },
 	{ name: "Write unit tests for notification service", status: "pending", priority: "medium", due_offset: 8, assignee: "Cybersader", contexts: ["testing", "notifications"], timeEstimate: 120, blockedBy: ["Fix notification bugs"] },
 	{ name: "Implement mobile navigation component", status: "pending", priority: "medium", due_offset: 9, assignee: "Alice Chen", creator: "Eva Martinez", projects: ["Mobile App Initiative"], contexts: ["mobile", "feature"], timeEstimate: 240, blockedBy: ["Finalize design mockups"], blocking: ["Mobile app smoke tests"] },
 	{ name: "Verify database backup integrity", status: "pending", priority: "high", due_offset: 8, assignee: "David Kim", contexts: ["database", "operations"], timeEstimate: 45, blockedBy: ["Complete database migration"] },
@@ -427,7 +429,7 @@ const TASKS: TaskDef[] = [
 	// Due later
 	{ name: "Monthly security review", status: "pending", priority: "high", due_offset: 28, assignee: "Bob Wilson", creator: "Bob Wilson", projects: ["Security Incident Response Plan"], recurrence: "FREQ=MONTHLY;BYMONTHDAY=1", contexts: ["security", "compliance"], timeEstimate: 180, reminders: [{ id: "rem_secrev_1", type: "relative", relatedTo: "due", offset: 3, unit: "days", direction: "before", description: "3 days before review" }] },
 	{ name: "Plan Q2 roadmap", status: "pending", priority: "low", due_offset: 30, assignee: "Carol Davis", projects: ["Q1 2026 Roadmap"], contexts: ["planning", "roadmap"] },
-	{ name: "Implement AI task parsing", status: "pending", priority: "low", due_offset: 45, assignee: "Cybersader", projects: ["AI Integration Research"], contexts: ["ai", "feature"], timeEstimate: 480 },
+	{ name: "Implement AI task parsing", status: "pending", priority: "low", due_offset: 45, assignee: "Cybersader", projects: ["AI Integration Research"], contexts: ["ai", "feature"], timeEstimate: 480, customProperties: { deadline: "2026-04-15", effort: "480", category: "feature" } },
 	{ name: "Security awareness session", status: "pending", priority: "high", due_offset: 14, assignee: "Security Team", creator: "Bob Wilson", projects: ["Security Incident Response Plan"], recurrence: "FREQ=MONTHLY;BYMONTHDAY=15", reminders: [{ id: "rem_security_1", type: "relative", relatedTo: "due", offset: 3, unit: "days", direction: "before", description: "3 days before session" }, { id: "rem_security_2", type: "relative", relatedTo: "due", offset: 1, unit: "hours", direction: "before", description: "1 hour before session" }], contexts: ["security", "training"] },
 	{ name: "Quarterly compliance audit", status: "pending", priority: "high", due_offset: 60, assignee: "Bob Wilson", creator: "Carol Davis", projects: ["GDPR Compliance Review"], recurrence: "FREQ=YEARLY;BYMONTH=3,6,9,12;BYMONTHDAY=1", contexts: ["compliance", "audit"], timeEstimate: 360, reminders: [{ id: "rem_audit_1", type: "relative", relatedTo: "due", offset: 7, unit: "days", direction: "before", description: "1 week before audit" }] },
 	{ name: "Daily standup notes", status: "pending", priority: "low", due_offset: 1, scheduled_offset: 1, assignee: "Cybersader", recurrence: "FREQ=DAILY;BYDAY=MO,TU,WE,TH,FR", contexts: ["meeting", "daily"] },
@@ -451,7 +453,7 @@ const TASKS: TaskDef[] = [
 	{ name: "Document coding standards", status: "pending", priority: "low", assignee: "Engineering Team", contexts: ["documentation", "standards"] },
 	{ name: "Evaluate new monitoring tools", status: "pending", priority: "medium", assignee: "David Kim", creator: "David Kim", contexts: ["operations", "research"], timeEstimate: 180 },
 	{ name: "Prototype dark mode theme", status: "pending", priority: "low", assignee: "Eva Martinez", creator: "Eva Martinez", projects: ["Design System Overview"], contexts: ["design", "feature"], timeEstimate: 240 },
-	{ name: "Refactor task service layer", status: "in-progress", priority: "medium", assignee: "Cybersader", creator: "Cybersader", contexts: ["refactor", "architecture"], timeEstimate: 300 },
+	{ name: "Refactor task service layer", status: "in-progress", priority: "medium", assignee: "Cybersader", creator: "Cybersader", contexts: ["refactor", "architecture"], timeEstimate: 300, customProperties: { effort: "300", category: "refactor" } },
 
 	// Parent tasks with subtasks
 	{ name: "Launch Project Beta", status: "in-progress", priority: "high", due_offset: 20, assignee: "Carol Davis", creator: "Carol Davis", projects: ["Project Beta Launch Plan"], contexts: ["project", "launch"], subtasks: ["Complete feature freeze", "Run load testing", "Security review for launch"], timeEstimate: 60 },
@@ -1946,6 +1948,39 @@ function generateTaskContent(task: TaskDef, ctx: GenerationContext): string {
 		for (const s of task.subtasks) lines.push(`  - "[[${s}]]"`);
 	}
 	if (task.creator) lines.push(`${ctx.creatorField}: "[[${task.creator}]]"`);
+
+	// Arbitrary custom properties (for testing PropertyPicker / "Use as" conversion)
+	if (task.customProperties) {
+		for (const [key, val] of Object.entries(task.customProperties)) {
+			if (Array.isArray(val)) {
+				lines.push(`${key}:`);
+				for (const item of val) lines.push(`  - ${item}`);
+			} else if (typeof val === "string") {
+				lines.push(`${key}: "${val}"`);
+			} else {
+				lines.push(`${key}: ${val}`);
+			}
+		}
+	}
+
+	// Ensure every task has convert_test (for PropertyPicker type conversion testing)
+	if (!task.customProperties?.convert_test) {
+		const CONVERT_TEST_DATES = [
+			"Mar 1, 2026", "Mar 3, 2026", "Mar 5, 2026", "Mar 7, 2026", "Mar 9, 2026",
+			"Mar 11, 2026", "Mar 13, 2026", "Mar 15, 2026", "Mar 17, 2026", "Mar 19, 2026",
+			"Feb 28, 2026", "Feb 26, 2026", "Feb 24, 2026", "Feb 22, 2026", "Feb 18, 2026",
+			"Apr 1, 2026", "Apr 3, 2026", "Apr 5, 2026", "Apr 7, 2026", "Apr 9, 2026",
+			"Jan 15, 2026", "Jan 20, 2026", "Jan 25, 2026", "Jan 10, 2026", "Jan 5, 2026",
+			"May 1, 2026", "May 5, 2026", "May 10, 2026", "May 15, 2026", "May 20, 2026",
+			"Jun 1, 2026", "Jun 5, 2026", "Jun 10, 2026", "Jun 15, 2026", "Jun 20, 2026",
+			"Jul 1, 2026", "Jul 5, 2026", "Jul 10, 2026", "Jul 15, 2026", "Jul 20, 2026",
+			"Aug 1, 2026", "Aug 5, 2026", "Aug 10, 2026", "Aug 15, 2026", "Aug 20, 2026",
+		];
+		// Use task name hash for deterministic but varied date selection
+		let hash = 0;
+		for (let i = 0; i < task.name.length; i++) hash = ((hash << 5) - hash + task.name.charCodeAt(i)) | 0;
+		lines.push(`convert_test: "${CONVERT_TEST_DATES[Math.abs(hash) % CONVERT_TEST_DATES.length]}"`);
+	}
 
 	return `---\n${lines.join("\n")}\n---\n\n# ${task.name}\n\nTask details go here.\n`;
 }
